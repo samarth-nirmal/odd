@@ -56,7 +56,7 @@ const GridCard: React.FC<{
       onClick={onSelect}
       className={`aspect-[3/5] relative overflow-hidden cursor-pointer transition-all duration-300 group bg-black ${
         isActive
-          ? 'filter-none ring-2 ring-[#2554f2] z-10 opacity-100'
+          ? 'filter-none ring-2 ring-[#FF9B00] z-10 opacity-100'
           : 'filter grayscale contrast-95 opacity-100 hover:filter-none'
       }`}
     >

@@ -85,7 +85,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-full h-[100dvh] max-h-[100dvh] overflow-hidden text-[#f6f4ee] select-none flex flex-col justify-between selection:bg-[#2554f2] selection:text-white">
+    <div className="relative w-full h-[100dvh] max-h-[100dvh] overflow-hidden text-[#f6f4ee] select-none flex flex-col justify-between selection:bg-[#FF9B00] selection:text-black">
       {/* Silky-smooth Dual-Layer Ambient Backdrop */}
       <AmbientBackdrop rgb={centerRGB} mode="dark" duration={900} />
 
@@ -95,48 +95,61 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Screen Content with Staggered Object-by-Object Reveal */}
-      <div
-        className="w-full h-full flex flex-col justify-between transition-all duration-700 ease-out"
-        style={{
-          transform: (isAboutOpen || isContactOpen || isServicesOpen) ? 'scale(0.96)' : 'scale(1)',
-          filter: (isAboutOpen || isContactOpen || isServicesOpen) ? 'blur(4px)' : 'blur(0px)',
-          opacity: (isAboutOpen || isContactOpen || isServicesOpen) ? 0.35 : 1,
-        }}
-      >
-        {/* 2. Top Minimal Chrome Navigation: Appears second (at 1.2s) */}
+      <div className="w-full h-full flex flex-col justify-between">
+        {/* Top Minimal Chrome Navigation */}
         <motion.div
           animate={{
             opacity: showSoundIntro ? 0 : 1,
-            y: showSoundIntro ? -24 : 0,
+            y: showSoundIntro ? -16 : 0,
           }}
           transition={{
-            duration: 1.6,
-            delay: showSoundIntro ? 0 : 1.2,
+            duration: 1.0,
+            delay: showSoundIntro ? 0 : 0.15,
             ease: [0.16, 1, 0.3, 1],
           }}
-          className="fixed top-0 inset-x-0 z-40 pointer-events-none"
+          className="fixed top-0 inset-x-0 z-[10020] pointer-events-none"
         >
           <Header
             viewMode={viewMode}
             setViewMode={setViewMode}
-            onOpenAbout={() => setIsAboutOpen(true)}
-            onOpenServices={() => setIsServicesOpen(true)}
-            onOpenContact={() => setIsContactOpen(true)}
+            onOpenAbout={() => {
+              setIsServicesOpen(false);
+              setIsContactOpen(false);
+              setIsAboutOpen(true);
+            }}
+            onOpenServices={() => {
+              setIsAboutOpen(false);
+              setIsContactOpen(false);
+              setIsServicesOpen(true);
+            }}
+            onOpenContact={() => {
+              setIsAboutOpen(false);
+              setIsServicesOpen(false);
+              setIsContactOpen(true);
+            }}
+            onCloseModals={() => {
+              setIsAboutOpen(false);
+              setIsServicesOpen(false);
+              setIsContactOpen(false);
+            }}
+            isAboutOpen={isAboutOpen}
+            isServicesOpen={isServicesOpen}
+            isContactOpen={isContactOpen}
             soundOn={soundOn}
             setSoundOn={setSoundOn}
           />
         </motion.div>
 
-        {/* 1. Main Stage (Gallery / Slider): Appears first (at 0.5s) */}
+        {/* Hero Section / Main Stage (Gallery / Slider): Appears promptly upon video finish */}
         <motion.main
           animate={{
             opacity: showSoundIntro ? 0 : 1,
-            scale: showSoundIntro ? 0.92 : 1,
-            y: showSoundIntro ? 24 : 0,
+            scale: showSoundIntro ? 0.95 : 1,
+            y: showSoundIntro ? 16 : 0,
           }}
           transition={{
-            duration: 2.2,
-            delay: showSoundIntro ? 0 : 0.5,
+            duration: 1.2,
+            delay: 0,
             ease: [0.16, 1, 0.3, 1],
           }}
           className="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden"
@@ -147,6 +160,7 @@ export default function App() {
               currentIndex={currentIndex}
               setCurrentIndex={setCurrentIndex}
               onSelectProject={(proj) => setSelectedProject(proj)}
+              onOpenServices={() => setIsServicesOpen(true)}
               fisheyeOn={fisheyeOn}
               curveMode="arch"
               paused={showSoundIntro || Boolean(selectedProject) || isAboutOpen || isContactOpen || isServicesOpen}
@@ -163,15 +177,15 @@ export default function App() {
           )}
         </motion.main>
 
-        {/* 3. Bottom Minimal Chrome: Appears third (at 1.7s) */}
+        {/* Bottom Minimal Chrome */}
         <motion.div
           animate={{
             opacity: showSoundIntro ? 0 : 1,
-            y: showSoundIntro ? 24 : 0,
+            y: showSoundIntro ? 16 : 0,
           }}
           transition={{
-            duration: 1.6,
-            delay: showSoundIntro ? 0 : 1.7,
+            duration: 1.0,
+            delay: showSoundIntro ? 0 : 0.15,
             ease: [0.16, 1, 0.3, 1],
           }}
           className="fixed bottom-0 inset-x-0 z-40 pointer-events-none"

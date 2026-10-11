@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { ArrowRight } from 'lucide-react';
 import { Project, CurveMode } from '../types';
 import { playTick, playShutter } from '../services/audio';
 
@@ -8,12 +9,13 @@ interface SliderViewProps {
   currentIndex: number;
   setCurrentIndex: (idx: number) => void;
   onSelectProject: (project: Project) => void;
+  onOpenServices?: () => void;
   fisheyeOn: boolean;
   curveMode?: CurveMode;
   paused?: boolean;
 }
 
-type DisplayProject = Project & { virtualKey: string; originalIndex: number };
+type DisplayProject = Project & { virtualKey: string; originalIndex: number; slot: number };
 
 const SliderCardMedia: React.FC<{
   project: DisplayProject;
@@ -142,6 +144,7 @@ export const SliderView: React.FC<SliderViewProps> = ({
   currentIndex,
   setCurrentIndex,
   onSelectProject,
+  onOpenServices,
   fisheyeOn,
   curveMode = 'arch',
   paused = false,
@@ -213,34 +216,22 @@ export const SliderView: React.FC<SliderViewProps> = ({
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // Create a repeated virtual list for continuous, infinite conveyor belt scrolling
-  const displayProjects = useMemo(() => {
-    if (projects.length === 0) return [];
-    const minCards = 24;
-    const multiplier = Math.max(2, Math.ceil(minCards / projects.length));
-    const repeated: (Project & { virtualKey: string; originalIndex: number })[] = [];
-    for (let m = 0; m < multiplier; m++) {
-      for (let i = 0; i < projects.length; i++) {
-        repeated.push({
-          ...projects[i],
-          virtualKey: `${projects[i].id}-copy-${m}-${i}`,
-          originalIndex: i,
-        });
-      }
-    }
-    return repeated;
-  }, [projects]);
-
-  const displayTotal = displayProjects.length;
+  const displayTotal = projects.length;
 
   // Smooth continuous floating scroll position
   const [scrollPos, setScrollPos] = useState(0);
-  const targetScrollRef = useRef(0);
-  const smoothScrollRef = useRef(0);
-  const lastCenterRef = useRef(0);
+  const targetScrollRef = useRef(Math.max(0, Math.min(projects.length - 1, currentIndex)));
+  const smoothScrollRef = useRef(targetScrollRef.current);
+  const lastCenterRef = useRef(currentIndex);
   const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentIndexRef = useRef(currentIndex);
   currentIndexRef.current = currentIndex;
+
+  // Infinite conveyor on the left, strictly ending at displayTotal - 1 (Titan) on the right
+  const isLastSlide =
+    displayTotal > 0 &&
+    ((Math.round(smoothScrollRef.current) % displayTotal + displayTotal) % displayTotal === displayTotal - 1) &&
+    smoothScrollRef.current >= displayTotal - 1.4;
 
   // Smooth curve mode switch transition state on desktop
   const [isCurveTransitioning, setIsCurveTransitioning] = useState(false);
@@ -304,28 +295,24 @@ export const SliderView: React.FC<SliderViewProps> = ({
           }
         }
 
-        // Wrap smooth bounds seamlessly
-        if (smoothScrollRef.current >= displayTotal) {
-          smoothScrollRef.current -= displayTotal;
-          targetScrollRef.current -= displayTotal;
-          startScrollRef.current -= displayTotal;
-        } else if (smoothScrollRef.current < 0) {
-          smoothScrollRef.current += displayTotal;
-          targetScrollRef.current += displayTotal;
-          startScrollRef.current += displayTotal;
+        // Right side is bounded at projects.length - 1 (Titan)
+        const maxScroll = displayTotal - 1;
+        if (smoothScrollRef.current > maxScroll + 0.35) {
+          smoothScrollRef.current = maxScroll + 0.35;
         }
+
+        // Left side is infinite (never clamped or forcibly wrapped)
 
         setScrollPos(smoothScrollRef.current);
 
         // Check if active center frame has changed to sync audio tick & parent state
-        const currentCenter = Math.round(smoothScrollRef.current);
-        if (currentCenter !== lastCenterRef.current) {
-          lastCenterRef.current = currentCenter;
+        const currentVirtualCenter = Math.round(smoothScrollRef.current);
+        if (currentVirtualCenter !== lastCenterRef.current) {
+          lastCenterRef.current = currentVirtualCenter;
           playTick();
-          const wrappedIdx = ((currentCenter % displayTotal) + displayTotal) % displayTotal;
-          const activeProj = displayProjects[wrappedIdx];
-          if (activeProj && activeProj.originalIndex !== currentIndexRef.current) {
-            setCurrentIndex(activeProj.originalIndex);
+          const currentProjectIndex = ((currentVirtualCenter % displayTotal) + displayTotal) % displayTotal;
+          if (currentProjectIndex !== currentIndexRef.current) {
+            setCurrentIndex(currentProjectIndex);
           }
         }
       }
@@ -335,31 +322,42 @@ export const SliderView: React.FC<SliderViewProps> = ({
 
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [displayTotal, displayProjects, setCurrentIndex]);
+  }, [displayTotal, setCurrentIndex]);
 
-  // Sync scroll position when external currentIndex or filtered projects change
+  // Sync scroll position when external currentIndex changes
   useEffect(() => {
-    if (displayProjects.length === 0) return;
-    const curWrappedIdx = ((Math.round(smoothScrollRef.current) % displayTotal) + displayTotal) % displayTotal;
-    const currentVirtual = displayProjects[curWrappedIdx];
-    if (!currentVirtual || currentVirtual.originalIndex !== currentIndex) {
-      // Find nearest virtual item matching the requested originalIndex to minimize travel distance
-      let bestDist = Infinity;
-      let bestOffset = 0;
-      displayProjects.forEach((item, idx) => {
-        if (item.originalIndex === currentIndex) {
-          let diff = (idx - smoothScrollRef.current) % displayTotal;
-          if (diff > displayTotal / 2) diff -= displayTotal;
-          if (diff < -displayTotal / 2) diff += displayTotal;
-          if (Math.abs(diff) < bestDist) {
-            bestDist = Math.abs(diff);
-            bestOffset = diff;
-          }
-        }
-      });
-      targetScrollRef.current = Math.round(smoothScrollRef.current + bestOffset);
+    if (displayTotal === 0) return;
+    const maxScroll = displayTotal - 1;
+    const currentNorm = ((Math.round(smoothScrollRef.current) % displayTotal) + displayTotal) % displayTotal;
+    if (currentNorm !== currentIndex) {
+      targetScrollRef.current = Math.max(0, Math.min(maxScroll, currentIndex));
     }
-  }, [currentIndex, displayProjects, displayTotal]);
+  }, [currentIndex, displayTotal]);
+
+  // Dynamically populated cards: infinite conveyor on the left, strictly bounded at displayTotal - 1 on the right
+  const visibleCards = useMemo(() => {
+    if (displayTotal === 0) return [];
+    const centerSlot = Math.round(scrollPos);
+    const range = isMobile ? 3 : (isCurveTransitioning ? 9 : 8);
+    const minSlot = centerSlot - range;
+    const maxSlot = Math.min(displayTotal - 1, centerSlot + range);
+
+    const cards: DisplayProject[] = [];
+
+    for (let s = minSlot; s <= maxSlot; s++) {
+      const originalIndex = ((s % displayTotal) + displayTotal) % displayTotal;
+      const proj = projects[originalIndex];
+      if (proj) {
+        cards.push({
+          ...proj,
+          slot: s,
+          originalIndex,
+          virtualKey: `${proj.id}-slot-${s}`,
+        });
+      }
+    }
+    return cards;
+  }, [displayTotal, scrollPos, isMobile, isCurveTransitioning, projects]);
 
   // Reset center hover when active project changes
   useEffect(() => {
@@ -448,15 +446,22 @@ export const SliderView: React.FC<SliderViewProps> = ({
 
   const goToNext = useCallback(() => {
     if (displayTotal === 0) return;
-    targetScrollRef.current = Math.round(targetScrollRef.current) + 1;
-  }, [displayTotal]);
+    const maxScroll = displayTotal - 1;
+    if (Math.round(smoothScrollRef.current) >= maxScroll || Math.round(targetScrollRef.current) >= maxScroll) {
+      if (onOpenServices) {
+        onOpenServices();
+      }
+      return;
+    }
+    targetScrollRef.current = Math.min(maxScroll, Math.round(targetScrollRef.current) + 1);
+  }, [displayTotal, onOpenServices]);
 
   const goToPrev = useCallback(() => {
     if (displayTotal === 0) return;
     targetScrollRef.current = Math.round(targetScrollRef.current) - 1;
   }, [displayTotal]);
 
-  // Auto-scroll: every 4 seconds, the slide goes to next one automatically
+  // Auto-scroll: every 4 seconds, the slide goes to next one automatically until slides end
   const autoScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetAutoScroll = useCallback(() => {
@@ -465,7 +470,10 @@ export const SliderView: React.FC<SliderViewProps> = ({
 
     autoScrollTimerRef.current = setTimeout(() => {
       if (!isDraggingRef.current && !isHoveringCenterCard && !paused) {
-        goToNext();
+        const maxScroll = displayTotal - 1;
+        if (Math.round(targetScrollRef.current) < maxScroll) {
+          goToNext();
+        }
       }
       resetAutoScroll();
     }, 4000);
@@ -493,7 +501,7 @@ export const SliderView: React.FC<SliderViewProps> = ({
         goToPrev();
       } else if (e.key === 'Enter') {
         const centerIdx = ((Math.round(smoothScrollRef.current) % displayTotal) + displayTotal) % displayTotal;
-        const activeProject = displayProjects[centerIdx];
+        const activeProject = projects[centerIdx];
         if (activeProject) {
           playShutter();
           onSelectProject(activeProject);
@@ -502,7 +510,7 @@ export const SliderView: React.FC<SliderViewProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToNext, goToPrev, displayProjects, displayTotal, onSelectProject, isCurveTransitioning, resetAutoScroll]);
+  }, [goToNext, goToPrev, projects, displayTotal, onSelectProject, isCurveTransitioning, resetAutoScroll]);
 
   // Wheel scroll: instant and responsive like native scroll
   // As soon as the user scrolls, images advance forward/backward immediately with zero delay
@@ -537,12 +545,25 @@ export const SliderView: React.FC<SliderViewProps> = ({
       const timeSinceLast = now - lastScrollTimeRef.current;
 
       // If scrolled, immediately advance the images with zero delay!
-      // A brief 180ms cadence enables smooth continuous scrolling across trackpads and mouse wheels
-      // while immediately responding if scroll direction changes.
       if (direction !== lastDirectionRef.current || timeSinceLast > 180) {
         lastScrollTimeRef.current = now;
         lastDirectionRef.current = direction;
-        targetScrollRef.current = Math.round(targetScrollRef.current) + direction;
+
+        const maxScroll = displayTotal - 1;
+        if (direction > 0) {
+          // Scrolling forward / right
+          if (Math.round(smoothScrollRef.current) >= maxScroll || Math.round(targetScrollRef.current) >= maxScroll) {
+            // Once the videos slides end, upon the next scroll, the service page should open
+            if (onOpenServices) {
+              onOpenServices();
+            }
+            return;
+          }
+          targetScrollRef.current = Math.min(maxScroll, Math.round(targetScrollRef.current) + 1);
+        } else {
+          // Scrolling backward / left: infinite on the left!
+          targetScrollRef.current = Math.round(targetScrollRef.current) - 1;
+        }
         resetAutoScroll();
       }
     };
@@ -551,7 +572,7 @@ export const SliderView: React.FC<SliderViewProps> = ({
     return () => {
       el.removeEventListener('wheel', onWheel);
     };
-  }, [displayTotal, isCurveTransitioning, resetAutoScroll]);
+  }, [displayTotal, isCurveTransitioning, resetAutoScroll, onOpenServices]);
 
   // Pointer drag handling: 1:1 direct tracking with momentum fling release
   const lastXRef = useRef(0);
@@ -564,6 +585,7 @@ export const SliderView: React.FC<SliderViewProps> = ({
     startY: number;
     continuousOffset: number;
     isActive: boolean;
+    slot: number;
   } | null>(null);
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -621,7 +643,13 @@ export const SliderView: React.FC<SliderViewProps> = ({
     }
 
     const curStep = effectiveFisheye ? 180 : step;
-    targetScrollRef.current = startScrollRef.current - diffX / curStep;
+    const maxScroll = displayTotal - 1;
+    const rawTarget = startScrollRef.current - diffX / curStep;
+    if (rawTarget > maxScroll) {
+      targetScrollRef.current = maxScroll + (rawTarget - maxScroll) * 0.35;
+    } else {
+      targetScrollRef.current = rawTarget;
+    }
   };
 
   const handlePointerUp = (e?: React.PointerEvent) => {
@@ -643,14 +671,14 @@ export const SliderView: React.FC<SliderViewProps> = ({
         e.clientY - clickedCardRef.current.startY
       );
       if (dist < 12) {
-        const { project: card, continuousOffset, isActive } = clickedCardRef.current;
+        const { project: card, isActive, slot } = clickedCardRef.current;
         if (isActive) {
           playShutter();
           onSelectProject(card);
         } else {
-          // If clicked on non-center card, do not open — bring it smoothly to center
+          // If clicked on non-center card, bring smoothly to center
           playTick();
-          targetScrollRef.current = Math.round(smoothScrollRef.current + continuousOffset);
+          targetScrollRef.current = Math.min(displayTotal - 1, slot);
           setCurrentIndex(card.originalIndex);
         }
         clickedCardRef.current = null;
@@ -660,14 +688,29 @@ export const SliderView: React.FC<SliderViewProps> = ({
     clickedCardRef.current = null;
 
     const curStep = effectiveFisheye ? 180 : step;
+    const maxScroll = displayTotal - 1;
     // Cushioned fling momentum calculation
     const velocity = velocityRef.current; // px per ms
     const momentum = (velocity * 160) / curStep;
-    targetScrollRef.current = Math.round(targetScrollRef.current - momentum);
+    const nextTarget = Math.round(targetScrollRef.current - momentum);
+
+    // If already at or past the last slide, and swiping left (advancing forward into services)
+    const draggedLeftPastEnd =
+      Math.round(smoothScrollRef.current) >= maxScroll &&
+      (startXRef.current - (e?.clientX ?? startXRef.current) > 35 || velocity < -0.25 || momentum < -0.3);
+
+    if (draggedLeftPastEnd) {
+      if (onOpenServices) {
+        onOpenServices();
+      }
+      targetScrollRef.current = maxScroll;
+    } else {
+      targetScrollRef.current = Math.min(maxScroll, nextTarget);
+    }
     resetAutoScroll();
   };
 
-  if (projects.length === 0 || displayProjects.length === 0) {
+  if (projects.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500 font-mono">
         NO WORKS MATCH FILTER
@@ -738,11 +781,9 @@ export const SliderView: React.FC<SliderViewProps> = ({
             transformStyle: 'preserve-3d',
           }}
         >
-          {displayProjects.map((project, idx) => {
-            // Smooth circular continuous offset around scrollPos
-            let continuousOffset = (idx - scrollPos) % displayTotal;
-            if (continuousOffset > displayTotal / 2) continuousOffset -= displayTotal;
-            if (continuousOffset < -displayTotal / 2) continuousOffset += displayTotal;
+          {visibleCards.map((project) => {
+            // Linear bounded continuous offset around scrollPos (infinite on the left, bounded on the right)
+            const continuousOffset = project.slot - scrollPos;
 
             const isActive = Math.abs(continuousOffset) < 0.48;
 
@@ -879,6 +920,7 @@ export const SliderView: React.FC<SliderViewProps> = ({
                     startY: e.clientY,
                     continuousOffset,
                     isActive,
+                    slot: project.slot,
                   };
                 }}
                 onPointerUp={(e) => {
@@ -896,9 +938,9 @@ export const SliderView: React.FC<SliderViewProps> = ({
                         playShutter();
                         onSelectProject(project);
                       } else {
-                        // Non-center card clicked: do not open, bring smoothly to center
+                        // Non-center card clicked: bring smoothly to center
                         playTick();
-                        targetScrollRef.current = Math.round(smoothScrollRef.current + continuousOffset);
+                        targetScrollRef.current = Math.min(displayTotal - 1, project.slot);
                         setCurrentIndex(project.originalIndex);
                       }
                       clickedCardRef.current = null;
@@ -911,9 +953,9 @@ export const SliderView: React.FC<SliderViewProps> = ({
                     playShutter();
                     onSelectProject(project);
                   } else {
-                    // Non-center card clicked: do not open, bring smoothly to center
+                    // Non-center card clicked: bring smoothly to center
                     playTick();
-                    targetScrollRef.current = Math.round(smoothScrollRef.current + continuousOffset);
+                    targetScrollRef.current = Math.min(displayTotal - 1, project.slot);
                     setCurrentIndex(project.originalIndex);
                   }
                 }}
@@ -988,6 +1030,22 @@ export const SliderView: React.FC<SliderViewProps> = ({
                       </span>
                     )}
                   </div>
+
+                  {project.originalIndex === displayTotal - 1 && isLastSlide && (
+                    <div
+                      className="mt-3 pointer-events-auto inline-flex md:hidden items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/80 border border-white/20 backdrop-blur-md cursor-pointer active:scale-95 transition-transform"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playTick();
+                        onOpenServices?.();
+                      }}
+                    >
+                      <span className="text-xs font-mono tracking-wider uppercase text-white font-medium">
+                        Scroll for services
+                      </span>
+                      <ArrowRight className="w-3.5 h-3.5 text-[#FF9B00]" />
+                    </div>
+                  )}
                 </div>
 
                 {/* 3D Mode Framing Border Overlay - smoothly fades out to zero in off mode so it never affects content sizing */}
@@ -1024,6 +1082,33 @@ export const SliderView: React.FC<SliderViewProps> = ({
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* "Scroll for services" Instruction Cue on desktop right edge when at the end of slides */}
+      <div
+        id="scroll-for-services-cue"
+        className={`hidden md:flex fixed right-6 sm:right-10 top-1/2 -translate-y-1/2 z-40 items-center gap-3 cursor-pointer group select-none transition-all duration-700 ease-out ${
+          isLastSlide && !isDragging
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
+            : 'opacity-0 translate-x-6 pointer-events-none'
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          playTick();
+          onOpenServices?.();
+        }}
+      >
+        <div className="flex flex-col items-end">
+          <span className="text-xs sm:text-[13px] font-mono tracking-wider uppercase text-[#c7c4bd] group-hover:text-white transition-colors">
+            Scroll for services
+          </span>
+          <span className="text-[10px] font-mono tracking-widest uppercase text-[#737373] group-hover:text-[#FF9B00] transition-colors">
+            Next section
+          </span>
+        </div>
+        <div className="w-8 h-8 rounded-full border border-white/20 bg-black/60 backdrop-blur-md flex items-center justify-center group-hover:bg-[#FF9B00] group-hover:border-[#FF9B00] transition-all duration-300">
+          <ArrowRight className="w-4 h-4 text-white transform group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
 

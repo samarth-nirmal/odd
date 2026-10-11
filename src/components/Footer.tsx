@@ -97,10 +97,10 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
       </div>
 
-      {/* Full-width Blue Straight Line Bottom Bar across the bottom edge - hidden on mobile */}
+      {/* Full-width Yellow Straight Line Bottom Bar across the bottom edge - hidden on mobile */}
       <div
         id="bottom-straight-bar"
-        className="hidden md:block pointer-events-auto w-full h-[3px] bg-[#2554f2] relative cursor-pointer"
+        className="hidden md:block pointer-events-auto w-full h-[3px] bg-[#FF9B00] relative cursor-pointer"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const clickX = e.clientX - rect.left;

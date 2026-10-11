@@ -120,11 +120,7 @@ export const ProjectLightbox: React.FC<ProjectLightboxProps> = ({
               playsInline
               loop
               preload="metadata"
-              className={
-                project.isReel
-                  ? 'w-full h-full object-cover'
-                  : 'w-full h-full object-contain md:object-cover'
-              }
+              className="w-full h-full object-cover"
             />
           ) : (
             <img
@@ -159,7 +155,7 @@ export const ProjectLightbox: React.FC<ProjectLightboxProps> = ({
                 }}
                 className={`w-7 h-10 aspect-[2/3] overflow-hidden cursor-pointer transition-all ${
                   idx === currentFrameIndex
-                    ? 'ring-1 ring-[#2554f2] opacity-100'
+                    ? 'ring-1 ring-[#FF9B00] opacity-100'
                     : 'opacity-40 hover:opacity-80'
                 }`}
               >

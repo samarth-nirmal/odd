@@ -211,11 +211,11 @@ export const StillGalleryModal: React.FC<StillGalleryModalProps> = ({
   return (
     <div
       key={`gallery-screen-wrapper-${project.id}`}
-      className="fixed inset-0 z-50 overflow-hidden pointer-events-auto"
+      className="fixed inset-0 z-[20000] overflow-hidden pointer-events-auto"
     >
-      {/* 1. BLUE SLIDE: Glides across and fully covers the entire screen first (solid, sharp slit) */}
+      {/* 1. SLIDE: Glides across and fully covers the entire screen first (solid, sharp slit) */}
       <motion.div
-        key={`blue-slide-${project.id}`}
+        key={`slide-${project.id}`}
         initial={{ x: '100%' }}
         animate={{ x: '0%' }}
         exit={{
@@ -227,7 +227,7 @@ export const StillGalleryModal: React.FC<StillGalleryModalProps> = ({
           ease: [0.14, 1, 0.22, 1],
         }}
         style={{ willChange: 'transform' }}
-        className="fixed inset-0 z-50 bg-[#2554f2] pointer-events-none"
+        className="fixed inset-0 z-[20000] bg-[#FF9B00] pointer-events-none"
       />
 
       {/* 2. WHITE SLIDE: Arrives as soon as blue covers the screen, entering slightly faster with smooth deceleration */}
@@ -246,7 +246,7 @@ export const StillGalleryModal: React.FC<StillGalleryModalProps> = ({
           ease: [0.12, 1, 0.2, 1],
         }}
         style={{ willChange: 'transform' }}
-        className="fixed inset-0 z-[55] bg-white text-[#111111] select-none flex flex-col justify-between overflow-hidden pointer-events-auto"
+        className="fixed inset-0 z-[20005] bg-white text-[#111111] select-none flex flex-col justify-between overflow-hidden pointer-events-auto"
       >
         {/* TOP HEADER */}
         <header className="px-6 sm:px-10 pt-6 pb-2 flex items-start justify-between text-sm sm:text-base font-medium tracking-tight">
@@ -399,8 +399,8 @@ export const StillGalleryModal: React.FC<StillGalleryModalProps> = ({
             onClick={handleRulerClick}
             className="hidden md:flex relative w-full h-4 sm:h-5 items-end cursor-pointer bg-transparent overflow-visible"
           >
-            {/* Solid Straight Blue Line */}
-            <div className="w-full h-[3px] bg-[#2554f2]" />
+            {/* Solid Straight Yellow Line */}
+            <div className="w-full h-[3px] bg-[#FF9B00]" />
           </div>
         </footer>
       </motion.div>

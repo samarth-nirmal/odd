@@ -36,12 +36,12 @@ export const STUDIO_INFO: StudioInfo = {
   phone: '+91 93706 02824',
   instagram: '@oddmango',
   services: [
-    'Commercial Photography',
-    'Film Production & Direction',
-    'Fashion & Editorial',
-    'Brand Campaigns',
-    'Events & Cultural Moments',
-    'Art Direction & Color Grading'
+    'Brand Films',
+    'Social Media Content',
+    'Commercials & Campaigns',
+    'Product & Lifestyle Films',
+    'Corporate & Institutional Films',
+    'Photography & Creative Design'
   ],
   trustedClients: [
     { name: 'Aston Martin', slug: 'aston-martin', category: 'Automotive' },

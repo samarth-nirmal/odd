@@ -187,11 +187,11 @@ export const FullscreenVideoModal: React.FC<FullscreenVideoModalProps> = ({
   return (
     <div
       key={`fullscreen-video-wrapper-${project.id}`}
-      className="fixed inset-0 z-50 overflow-hidden pointer-events-auto"
+      className="fixed inset-0 z-[20000] overflow-hidden pointer-events-auto"
     >
-      {/* 1. BLUE SLIDE: Glides across and fully covers the entire screen first (solid, sharp slit) */}
+      {/* 1. SLIDE: Glides across and fully covers the entire screen first (solid, sharp slit) */}
       <motion.div
-        key={`blue-slide-video-${project.id}`}
+        key={`slide-video-${project.id}`}
         initial={{ x: '100%' }}
         animate={{ x: '0%' }}
         exit={{
@@ -203,7 +203,7 @@ export const FullscreenVideoModal: React.FC<FullscreenVideoModalProps> = ({
           ease: [0.14, 1, 0.22, 1],
         }}
         style={{ willChange: 'transform' }}
-        className="fixed inset-0 z-50 bg-[#2554f2] pointer-events-none"
+        className="fixed inset-0 z-[20000] bg-[#FF9B00] pointer-events-none"
       />
 
       {/* 2. FULLSCREEN VIDEO SCREEN: Arrives right behind blue slide with silky smooth deceleration */}
@@ -222,7 +222,7 @@ export const FullscreenVideoModal: React.FC<FullscreenVideoModalProps> = ({
           ease: [0.12, 1, 0.2, 1],
         }}
         style={{ willChange: 'transform' }}
-        className="fixed inset-0 z-[55] bg-black text-[#fcf8ef] select-none flex flex-col justify-between overflow-hidden pointer-events-auto"
+        className="fixed inset-0 z-[20005] bg-black text-[#fcf8ef] select-none flex flex-col justify-between overflow-hidden pointer-events-auto"
       >
         {/* Video Stage: Fullscreen on mobile & landscape desktop; Full vertical Reel format with sharp edges on desktop for reels */}
         <div
@@ -262,11 +262,7 @@ export const FullscreenVideoModal: React.FC<FullscreenVideoModalProps> = ({
               preload="auto"
               muted={isMuted}
               onLoadedMetadata={handleLoadedMetadata}
-              className={
-                isReel
-                  ? 'w-full h-full object-cover select-none rounded-none'
-                  : 'w-full h-full object-contain md:object-cover select-none rounded-none'
-              }
+              className="w-full h-full object-cover select-none rounded-none"
             />
           </div>
         </div>
@@ -393,7 +389,7 @@ export const FullscreenVideoModal: React.FC<FullscreenVideoModalProps> = ({
           >
             <div
               ref={progressFillRef}
-              className="h-full w-full bg-[#2554f2] origin-left will-change-transform"
+              className="h-full w-full bg-[#FF9B00] origin-left will-change-transform"
               style={{ transform: 'scaleX(0)' }}
             />
           </div>
